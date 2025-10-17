@@ -83,14 +83,14 @@ contract Rent2Repay is
         address daoTreasuryAddress;
     }
 
-    /**
-     * @dev Pointer to storage slot. Allows integrators to override it with a custom storage location.
-     *
-     * NOTE: Consider following the ERC-7201 formula to derive storage locations.
-     */
+    /// @dev Storage slot for Rent2Repay following EIP-7201.
+    ///      This ensures deterministic, collision-resistant layout for upgradable contracts.
+    ///      Slot is derived from:
+    ///      keccak256(abi.encode(uint256(keccak256("erc7201:rent2repay.storage")) - 1)) & ~bytes32(uint256(0xff))
+
     function _getR2rStorage() private pure returns (Rent2RepayStorage storage $) {
         assembly {
-            $.slot := 0x52C63247E1F47d19d5ce046630c49f7C67dcaEcfb71ba98eedaab2ebca6e0
+                $.slot := 0x1f4f32d7c5d16c7295e30200464b1b35582d654b99a47f29e2716d17d60d7000
         }
     }
 
@@ -113,13 +113,6 @@ contract Rent2Repay is
     event DaoFeeReductionMinAmountChanged(uint256 indexed oldAmount, uint256 indexed newAmount);
     event DaoFeeReductionBpsChanged(uint256 indexed oldBps, uint256 indexed newBps);
     event DaoTreasuryAddressChanged(address indexed oldAddress, address indexed newAddress);
-
-    /// @notice Custom errors for better gas efficiency
-    error UserNotAuthorized();
-    error InvalidTokenAddress();
-    error TokenNotAuthorized();
-    error InvalidFeesBPS();
-    error InvalidTipsBPS();
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -163,7 +156,7 @@ contract Rent2Repay is
      * @param user The user address to validate
      */
     modifier userIsAuthorized(address user) {
-        if (!isAuthorized(user)) revert UserNotAuthorized();
+        if (!isAuthorized(user)) revert("User not authorized");
         _;
     }
 
@@ -172,7 +165,7 @@ contract Rent2Repay is
      * @param token The token address to validate
      */
     modifier validTokenAddress(address token) {
-        if (token == address(0)) revert InvalidTokenAddress();
+        if (token == address(0)) revert("Invalid token address");
         _;
     }
 
@@ -181,7 +174,7 @@ contract Rent2Repay is
      * @param token The token address to validate
      */
     modifier onlyAuthorizedToken(address token) {
-        if (!_getR2rStorage().tokenConfig[token].active) revert TokenNotAuthorized();
+        if (!_getR2rStorage().tokenConfig[token].active) revert("Token not authorized");
         _;
     }
 
@@ -276,7 +269,7 @@ contract Rent2Repay is
      * @return senderTips The sender tips amount
      * @return actualAmountRepaid The actual amount repaid to RMM
      */
-    function _processUserRepayment(Rent2RepayStorage storage s, address user, address token)
+    function _estimateUserRepayment(Rent2RepayStorage storage s, address user, address token)
         internal
         returns (uint256 adjustedDaoFees, uint256 senderTips, uint256 actualAmountRepaid)
     {
@@ -357,7 +350,7 @@ contract Rent2Repay is
     function rent2repay(address user, address token) external whenNotPaused onlyAuthorizedToken(token) nonReentrant {
         Rent2RepayStorage storage s = _getR2rStorage();
         (uint256 adjustedDaoFees, uint256 senderTips, uint256 actualAmountRepaid) =
-            _processUserRepayment(s, user, token);
+            _estimateUserRepayment(s, user, token);
         emit Rent2Repaid(user, msg.sender, token, actualAmountRepaid, adjustedDaoFees, senderTips);
 
         /// @dev Transfer fees to respective addresses
@@ -382,7 +375,7 @@ contract Rent2Repay is
             user = users[i];
             require(user != address(0), "Invalid user address");
 
-            (adjustedDaoFees, senderTips, actualAmountRepaid) = _processUserRepayment(s, user, token);
+            (adjustedDaoFees, senderTips, actualAmountRepaid) = _estimateUserRepayment(s, user, token);
             emit Rent2Repaid(user, msg.sender, token, actualAmountRepaid, adjustedDaoFees, senderTips);
 
             totalDaoFees += adjustedDaoFees;
@@ -475,15 +468,13 @@ contract Rent2Repay is
 
     /**
      * @notice Allows admins to give approval for tokens to external contracts
-     * @dev This function must be called before using rent2repay functions to approve tokens to RMM
+     * @dev This function must be called before using rent2repay functions to approve tokens to RMM. Call it twice if you want change the approval amount. (1st 0, 2nd amount)
      * @param token The token address to approve
      * @param spender The address that will be approved to spend the tokens (e.g., RMM contract)
      * @param amount The amount to approve (use type(uint256).max for unlimited approval)
      */
     function giveApproval(address token, address spender, uint256 amount) external onlyRole(ADMIN_ROLE) {
         require(IERC20(token).approve(spender, amount), "Approval failed");
-        //IERC20(token).safeApprove(spender, amount);
-        //SafeERC20.safeApprove(IERC20(token), spender, amount);
     }
 
     /**
@@ -561,6 +552,7 @@ contract Rent2Repay is
      * @param to The address to send recovered tokens to
      */
     function emergencyTokenRecovery(address token, uint256 amount, address to) external onlyRole(ADMIN_ROLE) {
+        require(token != address(0));
         IERC20(token).safeTransfer(to, amount);
     }
 
@@ -570,7 +562,7 @@ contract Rent2Repay is
      */
     function updateDaoFees(uint256 newFeesBps) external onlyRole(ADMIN_ROLE) {
         Rent2RepayStorage storage $ = _getR2rStorage();
-        if (newFeesBps + $.senderTipsBps > 10000) revert InvalidFeesBPS();
+        if (newFeesBps + $.senderTipsBps > 10000) revert("Invalid Fees BPS");
         emit FeeChanged($.daoFeesBps, newFeesBps);
         $.daoFeesBps = newFeesBps;
     }
@@ -581,7 +573,7 @@ contract Rent2Repay is
      */
     function updateSenderTips(uint256 newTipsBps) external onlyRole(ADMIN_ROLE) {
         Rent2RepayStorage storage $ = _getR2rStorage();
-        if ($.daoFeesBps + newTipsBps > 10000) revert InvalidTipsBPS();
+        if ($.daoFeesBps + newTipsBps > 10000) revert("Invalid Tips BPS");
         emit TipsChanged($.senderTipsBps, newTipsBps);
         $.senderTipsBps = newTipsBps;
     }

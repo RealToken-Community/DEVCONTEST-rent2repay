@@ -13,7 +13,7 @@ contract Rent2RepayHarness is Rent2Repay {
     /// @dev can oly be used to  coverage tests
     function _getHarnessStorage() private pure returns (Rent2RepayStorage storage s) {
         assembly {
-            s.slot := 0x52C63247E1F47d19d5ce046630c49f7C67dcaEcfb71ba98eedaab2ebca6e0
+            s.slot := 0x1f4f32d7c5d16c7295e30200464b1b35582d654b99a47f29e2716d17d60d7000
         }
     }
 
@@ -37,19 +37,19 @@ contract Rent2RepayHarness is Rent2Repay {
     }
 
     /**
-     * @notice Exposes the internal _processUserRepayment function for testing
+     * @notice Exposes the internal _estimateUserRepayment function for testing
      * @param user The user address
      * @param token The token address
      * @return adjustedDaoFees The DAO fees after adjustment
      * @return senderTips The sender tips amount
      * @return actualAmountRepaid The actual amount repaid to RMM
      */
-    function exposed_processUserRepayment(address user, address token)
+    function exposed_estimateUserRepayment(address user, address token)
         external
         returns (uint256 adjustedDaoFees, uint256 senderTips, uint256 actualAmountRepaid)
     {
         Rent2RepayStorage storage s = _getHarnessStorage();
-        return _processUserRepayment(s, user, token);
+        return _estimateUserRepayment(s, user, token);
     }
 
     /**
