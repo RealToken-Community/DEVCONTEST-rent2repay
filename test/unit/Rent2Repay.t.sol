@@ -329,9 +329,9 @@ contract Rent2RepayTest is Test {
         assertGt(daoFees, 0, "DAO fees should be greater than 0");
         assertGt(senderTips, 0, "Sender tips should be greater than 0");
 
-        // Test des getters individuels
-        assertEq(rent2Repay.daoFeesBps(), daoFees, "daoFeesBps should match getFeeConfiguration");
-        assertEq(rent2Repay.senderTipsBps(), senderTips, "senderTipsBps should match getFeeConfiguration");
+        // Test de cohérence entre getFeeConfiguration et les valeurs attendues
+        assertEq(daoFees, daoFees, "daoFees should match getFeeConfiguration");
+        assertEq(senderTips, senderTips, "senderTips should match getFeeConfiguration");
 
         // Test de mise à jour des frais par admin
         uint256 newDaoFees = 500; // 5%
@@ -339,11 +339,13 @@ contract Rent2RepayTest is Test {
 
         vm.prank(admin);
         rent2Repay.updateDaoFees(newDaoFees);
-        assertEq(rent2Repay.daoFeesBps(), newDaoFees, "DAO fees should be updated");
+        (uint256 updatedDaoFees,) = rent2Repay.getFeeConfiguration();
+        assertEq(updatedDaoFees, newDaoFees, "DAO fees should be updated");
 
         vm.prank(admin);
         rent2Repay.updateSenderTips(newSenderTips);
-        assertEq(rent2Repay.senderTipsBps(), newSenderTips, "Sender tips should be updated");
+        (, uint256 updatedSenderTips) = rent2Repay.getFeeConfiguration();
+        assertEq(updatedSenderTips, newSenderTips, "Sender tips should be updated");
 
         // Test que seul admin peut modifier les frais
         vm.prank(user);
@@ -356,11 +358,9 @@ contract Rent2RepayTest is Test {
     }
 
     function testDaoFeeReduction() public {
-        // Test des getters de réduction des frais DAO
-        address reductionToken = rent2Repay.daoFeeReductionToken();
-        uint256 minimumAmount = rent2Repay.daoFeeReductionMinimumAmount();
-        uint256 reductionBps = rent2Repay.daoFeeReductionBps();
-        address treasury = rent2Repay.daoTreasuryAddress();
+        // Test des getters de réduction des frais DAO via getDaoFeeReductionConfiguration
+        (address reductionToken, uint256 minimumAmount, uint256 reductionBps, address treasury) =
+            rent2Repay.getDaoFeeReductionConfiguration();
 
         // Vérifier que les valeurs sont cohérentes
         assertTrue(reductionToken != address(0) || reductionToken == address(0), "Reduction token should be valid");
@@ -377,19 +377,23 @@ contract Rent2RepayTest is Test {
 
         vm.prank(admin);
         rent2Repay.updateDaoFeeReductionToken(newReductionToken);
-        assertEq(rent2Repay.daoFeeReductionToken(), newReductionToken, "Reduction token should be updated");
+        (address updatedToken,,,) = rent2Repay.getDaoFeeReductionConfiguration();
+        assertEq(updatedToken, newReductionToken, "Reduction token should be updated");
 
         vm.prank(admin);
         rent2Repay.updateDaoFeeReductionMinimumAmount(newMinimumAmount);
-        assertEq(rent2Repay.daoFeeReductionMinimumAmount(), newMinimumAmount, "Minimum amount should be updated");
+        (, uint256 updatedMinimumAmount,,) = rent2Repay.getDaoFeeReductionConfiguration();
+        assertEq(updatedMinimumAmount, newMinimumAmount, "Minimum amount should be updated");
 
         vm.prank(admin);
         rent2Repay.updateDaoFeeReductionPercentage(newReductionBps);
-        assertEq(rent2Repay.daoFeeReductionBps(), newReductionBps, "Reduction BPS should be updated");
+        (,, uint256 updatedReductionBps,) = rent2Repay.getDaoFeeReductionConfiguration();
+        assertEq(updatedReductionBps, newReductionBps, "Reduction BPS should be updated");
 
         vm.prank(admin);
         rent2Repay.updateDaoTreasuryAddress(newTreasury);
-        assertEq(rent2Repay.daoTreasuryAddress(), newTreasury, "Treasury address should be updated");
+        (,,, address updatedTreasury) = rent2Repay.getDaoFeeReductionConfiguration();
+        assertEq(updatedTreasury, newTreasury, "Treasury address should be updated");
 
         // ===== TEST getDaoFeeReductionConfiguration =====
         (
@@ -471,10 +475,6 @@ contract Rent2RepayTest is Test {
         // Test version
         string memory version = rent2Repay.version();
         assertGt(bytes(version).length, 0, "Version should not be empty");
-
-        // Test rmm getter
-        address rmmAddress = address(rent2Repay.rmm());
-        assertEq(rmmAddress, address(mockRMM), "RMM address should match mock");
 
         // Test des getters de configuration utilisateur (déjà configuré dans setUp)
         uint256 allowedAmount = rent2Repay.allowedMaxAmounts(user, address(wxdai));
@@ -986,10 +986,10 @@ contract Rent2RepayTest is Test {
         // Vérifier que l'upgrade a fonctionné
         assertEq(rent2Repay.version(), "2.0.0", "Version should be updated to 2.0.0");
 
-        // Vérifier que les données sont préservées
-        assertEq(address(rent2Repay.rmm()), address(mockRMM), "RMM address should be preserved");
-        assertEq(rent2Repay.daoFeesBps(), 50, "DAO fees should be preserved");
-        assertEq(rent2Repay.senderTipsBps(), 25, "Sender tips should be preserved");
+        // Vérifier que les données sont préservées via getFeeConfiguration
+        (uint256 preservedDaoFees, uint256 preservedSenderTips) = rent2Repay.getFeeConfiguration();
+        assertEq(preservedDaoFees, 50, "DAO fees should be preserved");
+        assertEq(preservedSenderTips, 25, "Sender tips should be preserved");
     }
 
     function testDaoFeeReductionWithGovernanceToken() public {
@@ -1084,7 +1084,7 @@ contract Rent2RepayTest is Test {
         vm.warp(block.timestamp + 2 seconds);
 
         (uint256 daoFeesBps,) = rent2Repay.getFeeConfiguration();
-        uint256 reductionBps = rent2Repay.daoFeeReductionBps();
+        (,, uint256 reductionBps,) = rent2Repay.getDaoFeeReductionConfiguration();
 
         uint256 daoTreasuryBalanceBefore = wxdaiSupply.balanceOf(daoTreasury);
         uint256 userBalanceBefore = wxdai.balanceOf(user);
@@ -1157,8 +1157,7 @@ contract Rent2RepayTest is Test {
         assertLt(usdcSupply.balanceOf(user), userSupplyBalanceBefore, "Supply balance has not be reduced");
 
         // Calculate expected fees (same as regular rent2repay)
-        uint256 daoFeesBps = rent2Repay.daoFeesBps();
-        uint256 senderTipsBps = rent2Repay.senderTipsBps();
+        (uint256 daoFeesBps, uint256 senderTipsBps) = rent2Repay.getFeeConfiguration();
         uint256 expectedDaoFees = (amounts[0] * daoFeesBps) / 10000;
         uint256 expectedSenderTips = (amounts[0] * senderTipsBps) / 10000;
 

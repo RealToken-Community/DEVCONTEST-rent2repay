@@ -20,47 +20,51 @@ contract UpdateDaoTokenScript is Script {
         // Créer une instance du contrat via le proxy
         Rent2Repay rent2Repay = Rent2Repay(proxyAddress);
 
-        // TEST
-        uint256 daoFeeBps = rent2Repay.daoFeesBps();
-        console.log("DAO Fee Reduction BPS:", daoFeeBps);
+        // TEST - Configuration des frais DAO
+        (uint256 daoFeeBps, uint256 senderTipsBps) = rent2Repay.getFeeConfiguration();
+        console.log("DAO Fee BPS:", daoFeeBps);
+        console.log("Sender Tips BPS:", senderTipsBps);
+
         rent2Repay.updateDaoFees(1);
-        daoFeeBps = rent2Repay.daoFeesBps();
-        console.log("DAO Fee Reduction BPS:", daoFeeBps);
+        (daoFeeBps, senderTipsBps) = rent2Repay.getFeeConfiguration();
+        console.log("DAO Fee BPS after update:", daoFeeBps);
 
-        uint256 senderTipsBps = rent2Repay.senderTipsBps();
-        console.log("Tips BPS:", senderTipsBps);
         rent2Repay.updateSenderTips(2);
-        senderTipsBps = rent2Repay.senderTipsBps();
-        console.log("Tips BPS:", senderTipsBps);
+        (daoFeeBps, senderTipsBps) = rent2Repay.getFeeConfiguration();
+        console.log("Sender Tips BPS after update:", senderTipsBps);
 
-        address daoFeeReductionToken = rent2Repay.daoFeeReductionToken();
+        // TEST - Configuration de réduction des frais DAO
+        (
+            address daoFeeReductionToken,
+            uint256 daoFeeReductionMinimumAmount,
+            uint256 daoFeeReductionBps,
+            address treasury
+        ) = rent2Repay.getDaoFeeReductionConfiguration();
         console.log("DAO Fee Reduction Token:", daoFeeReductionToken);
+        console.log("DAO Fee Reduction Minimum Amount:", daoFeeReductionMinimumAmount);
+        console.log("DAO Fee Reduction BPS:", daoFeeReductionBps);
+        console.log("DAO Treasury Address:", treasury);
+
         rent2Repay.updateDaoFeeReductionToken(usdcToken);
-        daoFeeReductionToken = rent2Repay.daoFeeReductionToken();
-        console.log("DAO Fee Reduction Token:", daoFeeReductionToken);
+        (daoFeeReductionToken,,,) = rent2Repay.getDaoFeeReductionConfiguration();
+        console.log("DAO Fee Reduction Token after update:", daoFeeReductionToken);
 
-        uint256 daoFeeReductionMinimumAmount = rent2Repay.daoFeeReductionMinimumAmount();
-        console.log("DAO Fee Reduction Minimum Amount:", daoFeeReductionMinimumAmount);
         rent2Repay.updateDaoFeeReductionMinimumAmount(3);
-        daoFeeReductionMinimumAmount = rent2Repay.daoFeeReductionMinimumAmount();
-        console.log("DAO Fee Reduction Minimum Amount:", daoFeeReductionMinimumAmount);
+        (, daoFeeReductionMinimumAmount,,) = rent2Repay.getDaoFeeReductionConfiguration();
+        console.log("DAO Fee Reduction Minimum Amount after update:", daoFeeReductionMinimumAmount);
 
-        uint256 daoFeeReductionPercentage = rent2Repay.daoFeeReductionBps();
-        console.log("DAO Fee Reduction Percentage:", daoFeeReductionPercentage);
         rent2Repay.updateDaoFeeReductionPercentage(10000);
-        daoFeeReductionPercentage = rent2Repay.daoFeeReductionBps();
-        console.log("DAO Fee Reduction Percentage:", daoFeeReductionPercentage);
+        (,, daoFeeReductionBps,) = rent2Repay.getDaoFeeReductionConfiguration();
+        console.log("DAO Fee Reduction Percentage after update:", daoFeeReductionBps);
 
-        address treasury = rent2Repay.daoTreasuryAddress();
-        console.log("DAO Treasury Address:", treasury);
         rent2Repay.updateDaoTreasuryAddress(address(0x123));
-        treasury = rent2Repay.daoTreasuryAddress();
-        console.log("DAO Treasury Address:", treasury);
+        (,,, treasury) = rent2Repay.getDaoFeeReductionConfiguration();
+        console.log("DAO Treasury Address after update:", treasury);
 
         // rollback
         rent2Repay.updateDaoFeeReductionToken(daoGovernanceToken);
-        rent2Repay.updateDaoFees(5000);
-        rent2Repay.updateSenderTips(2500);
+        rent2Repay.updateDaoFees(50);
+        rent2Repay.updateSenderTips(25);
         rent2Repay.updateDaoFeeReductionMinimumAmount(1);
         rent2Repay.updateDaoTreasuryAddress(address(0x3456789012345678901234567890123456789012));
         rent2Repay.updateDaoFeeReductionPercentage(5000);

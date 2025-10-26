@@ -36,10 +36,6 @@ contract checkBalancesScript is Script {
         allowance = IERC20(usdcSupplyAddr).allowance(user1, proxyAddress);
         console.log("Allowance USDC Supply:", allowance);
 
-        // no allowance ?? make revert 80
-        //allowance = IERC20(usdcDebtAddr).allowance(user1, proxyAddress);
-        //console.log("Allowance USDC Debt:", allowance);
-
         console.log("USR 1 Checking allowances RMM");
         allowance = IERC20(usdcAddr).allowance(user1, rmmAddress);
         console.log("Allowance USDC:", allowance);
@@ -62,8 +58,14 @@ contract checkBalancesScript is Script {
         allowance = IERC20(usdcSupplyAddr).allowance(proxyAddress, rmmAddress);
         console.log("Allowance USDC Supply:", allowance);
 
-        // no allowance ?? make revert 80
-        //allowance = IERC20(usdcDebtAddr).allowance(user1, rmmAddress);
-        //console.log("Allowance USDC Debt:", allowance);
+        // we check user config on R2R
+        Rent2Repay rent2Repay = Rent2Repay(proxyAddress);
+        user1 = 0x19f35F822e34Bd9497CDf376350643FA2f6c3B81;
+        (address[] memory tokens, uint256[] memory maxAmounts) = rent2Repay.getUserConfigs(user1);
+        console.log("User1 address:", user1);
+        for (uint256 i = 0; i < tokens.length; i++) {
+            console.log("Token:", tokens[i]);
+            console.log("Max Amount:", maxAmounts[i]);
+        }
     }
 }

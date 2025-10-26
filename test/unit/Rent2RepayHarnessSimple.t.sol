@@ -125,12 +125,13 @@ contract Rent2RepayHarnessSimpleTest is Test {
         uint256 amount = 100 ether;
 
         console.log("\n=== TEST: totalFees < amount (cas valide) ===");
-        console.log("DAO fees BPS:", rent2RepayValid.daoFeesBps());
-        console.log("Sender tips BPS:", rent2RepayValid.senderTipsBps());
-        console.log("Total BPS:", rent2RepayValid.daoFeesBps() + rent2RepayValid.senderTipsBps());
+        (uint256 daoFeesBps, uint256 senderTipsBps) = rent2RepayValid.getFeeConfiguration();
+        console.log("DAO fees BPS:", daoFeesBps);
+        console.log("Sender tips BPS:", senderTipsBps);
+        console.log("Total BPS:", daoFeesBps + senderTipsBps);
 
         // Vérifier que les frais sont < 100%
-        assertLt(rent2RepayValid.daoFeesBps() + rent2RepayValid.senderTipsBps(), 10000, "Total fees should be < 100%");
+        assertLt(daoFeesBps + senderTipsBps, 10000, "Total fees should be < 100%");
 
         // Tester _calculateFees avec des frais valides
         (uint256 daoFees, uint256 senderTips, uint256 amountForRepayment) =
@@ -185,12 +186,13 @@ contract Rent2RepayHarnessSimpleTest is Test {
         uint256 amount = 100 ether;
 
         console.log("\n=== TEST: totalFees < amount (cas valide) ===");
-        console.log("DAO fees BPS:", rent2RepayValid.daoFeesBps());
-        console.log("Sender tips BPS:", rent2RepayValid.senderTipsBps());
-        console.log("Total BPS:", rent2RepayValid.daoFeesBps() + rent2RepayValid.senderTipsBps());
+        (uint256 daoFeesBps, uint256 senderTipsBps) = rent2RepayValid.getFeeConfiguration();
+        console.log("DAO fees BPS:", daoFeesBps);
+        console.log("Sender tips BPS:", senderTipsBps);
+        console.log("Total BPS:", daoFeesBps + senderTipsBps);
 
         // Vérifier que les frais sont < 100%
-        assertLt(rent2RepayValid.daoFeesBps() + rent2RepayValid.senderTipsBps(), 10000, "Total fees should be < 100%");
+        assertLt(daoFeesBps + senderTipsBps, 10000, "Total fees should be < 100%");
 
         // Tester _calculateFees avec des frais valides
         (uint256 daoFees, uint256 senderTips, uint256 amountForRepayment) =

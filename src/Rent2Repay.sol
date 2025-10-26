@@ -31,6 +31,8 @@ contract Rent2Repay is
     bytes32 public constant EMERGENCY_ROLE = keccak256("EMERGENCY_ROLE");
     bytes32 public constant OPERATOR_ROLE = keccak256("OPERATOR_ROLE");
 
+    uint256 public constant DEFAULT_INTEREST_RATE_MODE = 2;
+
     struct TokenConfig {
         address token;
         address supplyToken;
@@ -55,8 +57,7 @@ contract Rent2Repay is
     struct Rent2RepayStorage {
         /// @notice RMM contract interface
         IRMM rmm;
-        /// @notice Default interest rate mode (2 = Variable rate)
-        uint256 defaultInterestRateMode;
+        
         /// @notice Maps user addresses to token addresses to their weekly maximum amount
         mapping(address => mapping(address => uint256)) allowedMaxAmounts;
         /// @notice Maps user addresses to their last repayment timestamp (shared across all tokens)
@@ -68,6 +69,8 @@ contract Rent2Repay is
         /// @notice Array to keep track of all tokens that have been configured at least once
         /// @dev Use tokenConfig[token].active to check if a token is currently active
         address[] tokenList;
+        /// @notice Maps token addresses to a boolean indicating if they are in the tokenList
+        mapping(address => bool) isInTokenList;
         /// @notice DAO fees in basis points (BPS) - 10000 = 100%
         uint256 daoFeesBps;
         /// @notice Sender tips in basis points (BPS) - 10000 = 100%
@@ -90,7 +93,7 @@ contract Rent2Repay is
 
     function _getR2rStorage() private pure returns (Rent2RepayStorage storage $) {
         assembly {
-                $.slot := 0x1f4f32d7c5d16c7295e30200464b1b35582d654b99a47f29e2716d17d60d7000
+            $.slot := 0x1f4f32d7c5d16c7295e30200464b1b35582d654b99a47f29e2716d17d60d7000
         }
     }
 
@@ -143,8 +146,7 @@ contract Rent2Repay is
         /// @dev 0.25% default
         $.daoFeeReductionBps = 5000;
         /// @dev 50% default
-        $.defaultInterestRateMode = 2;
-        /// @dev Default interest rate mode (2 = Variable rate)
+
 
         /// @dev Initialize with WXDAI and USDC as authorized token pairs
         _authorizeTokenPair(cfg.wxdaiToken, cfg.wxdaiArmmToken, cfg.wxdaiDebtToken);
@@ -196,8 +198,12 @@ contract Rent2Repay is
         /// @dev Force to clean up data
         uint256 maxLength = $.tokenList.length;
         for (uint256 i = 0; i < maxLength;) {
-            $.allowedMaxAmounts[msg.sender][$.tokenList[i]] = 0;
-            $.periodicity[msg.sender][$.tokenList[i]] = 0;
+            address t = $.tokenList[i]; // list contains only 'simple' token
+            address s = $.tokenConfig[t].supplyToken;
+            $.allowedMaxAmounts[msg.sender][t] = 0;
+            $.periodicity[msg.sender][t] = 0;
+            $.allowedMaxAmounts[msg.sender][s] = 0;
+            $.periodicity[msg.sender][s] = 0;
             unchecked {
                 ++i;
             }
@@ -342,7 +348,7 @@ contract Rent2Repay is
         }
         /// @dev Note: Onlycase where RMM returns a different amount than the amountForRepayment is when amountForRepayment == max uint256
         actualAmountRepaid =
-            s.rmm.repay(s.tokenConfig[token].token, amountForRepayment, s.defaultInterestRateMode, user);
+            s.rmm.repay(s.tokenConfig[token].token, amountForRepayment, DEFAULT_INTEREST_RATE_MODE, user);
 
         adjustedDaoFees = daoFees;
     }
@@ -406,14 +412,23 @@ contract Rent2Repay is
         }
 
         uint256 maxLength = $.tokenList.length;
-        tokens = new address[](maxLength);
-        maxAmounts = new uint256[](maxLength);
-
+        tokens = new address[](maxLength * 2);
+        maxAmounts = new uint256[](maxLength * 2);
         uint256 index;
         for (uint256 i = 0; i < maxLength;) {
-            if ($.tokenConfig[$.tokenList[i]].active && $.allowedMaxAmounts[user][$.tokenList[i]] > 0) {
+            address token = $.tokenList[i];
+            address supplyToken = $.tokenConfig[token].supplyToken;
+            if ($.tokenConfig[token].active && $.allowedMaxAmounts[user][token] > 0) {
                 tokens[index] = $.tokenList[i];
                 maxAmounts[index] = $.allowedMaxAmounts[user][$.tokenList[i]];
+                unchecked {
+                    ++index;
+                }
+            }
+            // list contains only 'simple' token, so we need to check the supply token
+            if ($.tokenConfig[supplyToken].active && $.allowedMaxAmounts[user][supplyToken] > 0) {
+                tokens[index] = supplyToken;
+                maxAmounts[index] = $.allowedMaxAmounts[user][supplyToken];
                 unchecked {
                     ++index;
                 }
@@ -422,7 +437,6 @@ contract Rent2Repay is
                 ++i;
             }
         }
-
         assembly {
             mstore(tokens, index)
             mstore(maxAmounts, index)
@@ -450,7 +464,11 @@ contract Rent2Repay is
 
         $.tokenConfig[token] = config;
         $.tokenConfig[supplyToken] = config;
-        $.tokenList.push(token);
+        if (!$.isInTokenList[token]) {
+            // dodge duplicates activate, deactivate, activate again, etc
+            $.isInTokenList[token] = true;
+            $.tokenList.push(token);
+        }
     }
 
     /**
@@ -677,13 +695,20 @@ contract Rent2Repay is
         Rent2RepayStorage storage $ = _getR2rStorage();
         uint256 len = $.tokenList.length;
         /// @dev Allocate array with maximum size directly
-        activeTokens = new address[](len);
+        activeTokens = new address[](len * 2); // t & s tokens
 
         uint256 count;
         for (uint256 i; i < len;) {
             address t = $.tokenList[i];
+            address s = $.tokenConfig[t].supplyToken;
             if ($.tokenConfig[t].active) {
                 activeTokens[count] = t;
+                unchecked {
+                    ++count;
+                }
+            }
+            if ($.tokenConfig[s].active) {
+                activeTokens[count] = s;
                 unchecked {
                     ++count;
                 }
@@ -711,12 +736,7 @@ contract Rent2Repay is
      * @return Version string
      */
     function version() external pure virtual returns (string memory) {
-        return "1.0.0";
-    }
-
-    // Public getters for storage variables - optimized for gas
-    function rmm() external view returns (IRMM) {
-        return _getR2rStorage().rmm;
+        return "3.0.0";
     }
 
     function allowedMaxAmounts(address user, address token) external view returns (uint256) {
@@ -737,29 +757,5 @@ contract Rent2Repay is
 
     function tokenList(uint256 index) external view returns (address) {
         return _getR2rStorage().tokenList[index];
-    }
-
-    function daoFeesBps() external view returns (uint256) {
-        return _getR2rStorage().daoFeesBps;
-    }
-
-    function senderTipsBps() external view returns (uint256) {
-        return _getR2rStorage().senderTipsBps;
-    }
-
-    function daoFeeReductionToken() external view returns (address) {
-        return _getR2rStorage().daoFeeReductionToken;
-    }
-
-    function daoFeeReductionMinimumAmount() external view returns (uint256) {
-        return _getR2rStorage().daoFeeReductionMinimumAmount;
-    }
-
-    function daoFeeReductionBps() external view returns (uint256) {
-        return _getR2rStorage().daoFeeReductionBps;
-    }
-
-    function daoTreasuryAddress() external view returns (address) {
-        return _getR2rStorage().daoTreasuryAddress;
     }
 }

@@ -77,7 +77,6 @@ contract DeployGnosisScript is Script {
         console.log("Admin role:", rent2Repay.hasRole(rent2Repay.ADMIN_ROLE(), ADMIN_ADDRESS));
         console.log("Emergency role:", rent2Repay.hasRole(rent2Repay.EMERGENCY_ROLE(), EMERGENCY_ADDRESS));
         console.log("Operator role:", rent2Repay.hasRole(rent2Repay.OPERATOR_ROLE(), OPERATOR_ADDRESS));
-        console.log("RMM address:", address(rent2Repay.rmm()));
 
         (uint256 daoFees, uint256 senderTips) = rent2Repay.getFeeConfiguration();
         console.log("DAO fees (BPS):", daoFees);

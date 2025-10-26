@@ -137,7 +137,7 @@ contract Rent2RepayHarness is Rent2Repay {
         // Bypass the normal validation by temporarily setting senderTips to 0
         // This allows us to set daoFees to any value, then we can set senderTips back
         // We'll use internal calls to avoid authorization issues
-        uint256 originalSenderTips = this.senderTipsBps();
+        (, uint256 originalSenderTips) = this.getFeeConfiguration();
 
         // Temporarily set senderTips to 0 to bypass validation
         this.updateSenderTips(0);
@@ -157,7 +157,7 @@ contract Rent2RepayHarness is Rent2Repay {
         // Bypass the normal validation by temporarily setting daoFees to 0
         // This allows us to set senderTips to any value, then we can set daoFees back
         // We'll use internal calls to avoid authorization issues
-        uint256 originalDaoFees = this.daoFeesBps();
+        (uint256 originalDaoFees,) = this.getFeeConfiguration();
 
         // Temporarily set daoFees to 0 to bypass validation
         this.updateDaoFees(0);

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {Script, console} from "forge-std/Script.sol";
-import {Rent2Repay} from "../../src/Rent2Repay.sol";
+import {Rent2Repay} from "../../../src/Rent2Repay.sol";
 
 /**
  * @title UpdateR2RVersion

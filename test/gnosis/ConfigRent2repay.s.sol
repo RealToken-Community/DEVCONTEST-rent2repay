@@ -32,7 +32,7 @@ contract configureR2Rscript is Script {
         amounts[1] = 6 * 10 ** 3; // 0.1 cent
         amounts[2] = 1 * 10 ** 6; // 1 USDC
 
-        rent2Repay.configureRent2Repay(tokens, amounts, 1 seconds, block.timestamp);
+        rent2Repay.configureRent2Repay(tokens, amounts, 1 minutes, block.timestamp);
 
         // approve USDC for Rent2Repay
         IERC20(usdcAddr).approve(proxyAddress, type(uint256).max);

@@ -32,8 +32,13 @@ contract callR2Rscript is Script {
         console.log("User1 USDC Supply:", amount);
         amount = IERC20(usdcDebtAddr).balanceOf(user1);
         console.log("User1 USDC Debt:", amount);
-        amount = rent2Repay.allowedMaxAmounts(user1, usdcSupplyAddr);
-        console.log("User1 USDC Supply Allowed:", amount);
+        // Récupérer la configuration de l'utilisateur pour vérifier les montants autorisés
+        (address[] memory userTokens, uint256[] memory userAmounts) = rent2Repay.getUserConfigs(user1);
+        console.log("User1 configured tokens count:", userTokens.length);
+
+        // Vérifier le montant autorisé pour USDC Supply
+        uint256 allowedAmount = rent2Repay.allowedMaxAmounts(user1, usdcSupplyAddr);
+        console.log("User1 USDC Supply Allowed:", allowedAmount);
 
         rent2Repay.rent2repay(user1, usdcSupplyAddr);
 
