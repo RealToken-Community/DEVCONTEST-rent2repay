@@ -238,7 +238,7 @@ contract Rent2RepayCoverageTest is Test {
     // ===== TESTS DE COUVERTURE POUR _validateUserAndToken =====
 
     function testRent2RepayWithUserNotAuthorized() public {
-        // Test du require: $.lastRepayTimestamps[user] != 0
+        // Test du require: $.getLastRepayTimestamps[user] != 0
         // Utiliser un user non configuré (unknownUser)
         vm.prank(user2);
         vm.expectRevert("User not authorized");
@@ -246,7 +246,7 @@ contract Rent2RepayCoverageTest is Test {
     }
 
     function testRent2RepayWithUserNotConfiguredForToken() public {
-        // Test du require: $.allowedMaxAmounts[user][token] > 0
+        // Test du require: $.getAllowedMaxAmounts[user][token] > 0
         // Configurer user pour wxdai seulement
         address[] memory tokens = new address[](1);
         tokens[0] = address(wxdai);
@@ -357,7 +357,7 @@ contract Rent2RepayCoverageTest is Test {
     // ===== TESTS DE COUVERTURE POUR getActiveTokens (ligne 804) =====
 
     function testGetActiveTokensWithActiveAndInactiveTokens() public {
-        // Test de la ligne 804: if ($.tokenConfig[t].active)
+        // Test de la ligne 804: if ($.getTokenConfig[t].active)
         // Cas true: token actif
         // Cas false: token inactif
 
@@ -400,7 +400,7 @@ contract Rent2RepayCoverageTest is Test {
         assertTrue(testTokenFound, "Test token should be active after adding");
 
         // ===== ÉTAPE 3: DÉSACTIVER LE TOKEN (INACTIF) =====
-        // Désactiver le token (il reste dans tokenList mais devient inactif)
+        // Désactiver le token (il reste dans getTokenList mais devient inactif)
         vm.prank(admin);
         rent2Repay.unauthorizeToken(address(testToken));
 
@@ -433,7 +433,7 @@ contract Rent2RepayCoverageTest is Test {
         // - Cas false: testToken est devenu inactif (ligne 804 = false)
 
         // Vérifier la configuration du token désactivé
-        Rent2Repay.TokenConfig memory config = rent2Repay.tokenConfig(address(testToken));
+        Rent2Repay.TokenConfig memory config = rent2Repay.getTokenConfig(address(testToken));
         assertEq(config.token, address(testToken), "Token address should be preserved");
         assertFalse(config.active, "Token should be inactive after unauthorize");
     }

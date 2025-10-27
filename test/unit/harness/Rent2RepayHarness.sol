@@ -105,11 +105,10 @@ contract Rent2RepayHarness is Rent2Repay {
     /**
      * @notice Exposes the internal _isNewPeriod function for testing
      * @param _user The user address
-     * @param _token The token address
-     * @return true if more than a week has passed since lastTimestamp
+     * @return true if more than a period has passed since lastTimestamp
      */
-    function exposed_isNewPeriod(address _user, address _token) external view returns (bool) {
-        return _isNewPeriod(_user, _token);
+    function exposed_isNewPeriod(address _user) external view returns (bool) {
+        return _isNewPeriod(_user);
     }
 
     /**

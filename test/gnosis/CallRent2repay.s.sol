@@ -37,7 +37,7 @@ contract callR2Rscript is Script {
         console.log("User1 configured tokens count:", userTokens.length);
 
         // Vérifier le montant autorisé pour USDC Supply
-        uint256 allowedAmount = rent2Repay.allowedMaxAmounts(user1, usdcSupplyAddr);
+        uint256 allowedAmount = rent2Repay.getAllowedMaxAmounts(user1, usdcSupplyAddr);
         console.log("User1 USDC Supply Allowed:", allowedAmount);
 
         rent2Repay.rent2repay(user1, usdcSupplyAddr);

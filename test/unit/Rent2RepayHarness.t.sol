@@ -149,14 +149,14 @@ contract Rent2RepayHarnessTest is Test {
 
         // Test immédiatement après configuration (devrait être false)
         assertFalse(
-            rent2Repay.exposed_isNewPeriod(user, address(wxdai)), "Should not be new period immediately after config"
+            rent2Repay.exposed_isNewPeriod(user), "Should not be new period immediately after config"
         );
 
         // Avancer le temps de 1 semaine + 1 seconde
         vm.warp(block.timestamp + 1 weeks + 1 seconds);
 
         // Test après la période (devrait être true)
-        assertTrue(rent2Repay.exposed_isNewPeriod(user, address(wxdai)), "Should be new period after 1 week + 1 second");
+        assertTrue(rent2Repay.exposed_isNewPeriod(user), "Should be new period after 1 week + 1 second");
     }
 
     function testExposedTransferFees() public {
@@ -203,10 +203,9 @@ contract Rent2RepayHarnessTest is Test {
         assertFalse(rent2Repay.isAuthorized(user), "User should not be authorized after removal");
 
         // Vérifier que les montants sont remis à zéro
-        assertEq(rent2Repay.allowedMaxAmounts(user, address(wxdai)), 0, "WXDAI amount should be 0");
-        assertEq(rent2Repay.allowedMaxAmounts(user, address(usdc)), 0, "USDC amount should be 0");
-        assertEq(rent2Repay.periodicity(user, address(wxdai)), 0, "WXDAI periodicity should be 0");
-        assertEq(rent2Repay.periodicity(user, address(usdc)), 0, "USDC periodicity should be 0");
+        assertEq(rent2Repay.getAllowedMaxAmounts(user, address(wxdai)), 0, "WXDAI amount should be 0");
+        assertEq(rent2Repay.getAllowedMaxAmounts(user, address(usdc)), 0, "USDC amount should be 0");
+        assertEq(rent2Repay.getPeriodicity(user), 0, "User getPeriodicity should be 0");
     }
 
     function testExposedValidTokenAddress() public {
@@ -225,14 +224,14 @@ contract Rent2RepayHarnessTest is Test {
         MockERC20 newToken = new MockERC20("New Token", "NEW", 18, 1000000 ether);
         MockERC20 newSupplyToken = new MockERC20("New Supply", "aNEW", 18, 1000000 ether);
 
-        assertFalse(rent2Repay.tokenConfig(address(newToken)).active, "New token should not be active initially");
+        assertFalse(rent2Repay.getTokenConfig(address(newToken)).active, "New token should not be active initially");
 
         rent2Repay.exposed_authorizeTokenPair(address(newToken), address(newSupplyToken), address(0x123));
 
-        assertTrue(rent2Repay.tokenConfig(address(newToken)).active, "New token should be active after authorization");
-        assertEq(rent2Repay.tokenConfig(address(newToken)).token, address(newToken), "Token address should match");
+        assertTrue(rent2Repay.getTokenConfig(address(newToken)).active, "New token should be active after authorization");
+        assertEq(rent2Repay.getTokenConfig(address(newToken)).token, address(newToken), "Token address should match");
         assertEq(
-            rent2Repay.tokenConfig(address(newToken)).supplyToken,
+            rent2Repay.getTokenConfig(address(newToken)).supplyToken,
             address(newSupplyToken),
             "Supply token address should match"
         );

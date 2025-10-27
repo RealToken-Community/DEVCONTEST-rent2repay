@@ -62,8 +62,8 @@ contract Rent2Repay is
         mapping(address => mapping(address => uint256)) allowedMaxAmounts;
         /// @notice Maps user addresses to their last repayment timestamp (shared across all tokens)
         mapping(address => uint256) lastRepayTimestamps;
-        /// @notice Maps user addresses to token addresses to their periodicity
-        mapping(address => mapping(address => uint256)) periodicity;
+        /// @notice Maps user addresses to their periodicity
+        mapping(address => uint256) periodicity;
         /// @notice Maps token addresses to their debt token addresses
         mapping(address => TokenConfig) tokenConfig;
         /// @notice Array to keep track of all tokens that have been configured at least once
@@ -201,9 +201,7 @@ contract Rent2Repay is
             address t = $.tokenList[i]; // list contains only 'simple' token
             address s = $.tokenConfig[t].supplyToken;
             $.allowedMaxAmounts[msg.sender][t] = 0;
-            $.periodicity[msg.sender][t] = 0;
             $.allowedMaxAmounts[msg.sender][s] = 0;
-            $.periodicity[msg.sender][s] = 0;
             unchecked {
                 ++i;
             }
@@ -219,12 +217,13 @@ contract Rent2Repay is
                 tokens[i] != address(0) && $.tokenConfig[tokens[i]].active && amounts[i] > 0, "Invalid token or amount"
             );
             $.allowedMaxAmounts[msg.sender][tokens[i]] = amounts[i];
-            $.periodicity[msg.sender][tokens[i]] = period == 0 ? 1 weeks : period;
+            
             emit SetR2R(msg.sender, tokens[i], amounts[i], period, $.lastRepayTimestamps[msg.sender]);
             unchecked {
                 ++i;
             }
         }
+        $.periodicity[msg.sender] = period == 0 ? 1 weeks : period;
     }
 
     /**
@@ -280,8 +279,8 @@ contract Rent2Repay is
         returns (uint256 adjustedDaoFees, uint256 senderTips, uint256 actualAmountRepaid)
     {
         require(s.lastRepayTimestamps[user] != 0, "User not authorized");
-        require(s.periodicity[user][token] > 0, "Periodicity not set");
-        require(_isNewPeriod(user, token), "Wait next period");
+        require(s.periodicity[user] > 0, "Periodicity not set");
+        require(_isNewPeriod(user), "Wait next period");
 
         /// @dev Step 1: Calculate and transfer tokens
         uint256 daoFees;
@@ -395,55 +394,6 @@ contract Rent2Repay is
     }
 
     /**
-     * @notice Retrieves all authorized tokens and their configurations for a user
-     * @param user Address of the user
-     * @return tokens Array of authorized token addresses
-     * @return maxAmounts Array of weekly max amounts for each token
-     */
-    function getUserConfigs(address user)
-        external
-        view
-        returns (address[] memory tokens, uint256[] memory maxAmounts)
-    {
-        Rent2RepayStorage storage $ = _getR2rStorage();
-        /// @dev If user is not authorized, return empty arrays
-        if ($.lastRepayTimestamps[user] == 0) {
-            return (new address[](0), new uint256[](0));
-        }
-
-        uint256 maxLength = $.tokenList.length;
-        tokens = new address[](maxLength * 2);
-        maxAmounts = new uint256[](maxLength * 2);
-        uint256 index;
-        for (uint256 i = 0; i < maxLength;) {
-            address token = $.tokenList[i];
-            address supplyToken = $.tokenConfig[token].supplyToken;
-            if ($.tokenConfig[token].active && $.allowedMaxAmounts[user][token] > 0) {
-                tokens[index] = $.tokenList[i];
-                maxAmounts[index] = $.allowedMaxAmounts[user][$.tokenList[i]];
-                unchecked {
-                    ++index;
-                }
-            }
-            // list contains only 'simple' token, so we need to check the supply token
-            if ($.tokenConfig[supplyToken].active && $.allowedMaxAmounts[user][supplyToken] > 0) {
-                tokens[index] = supplyToken;
-                maxAmounts[index] = $.allowedMaxAmounts[user][supplyToken];
-                unchecked {
-                    ++index;
-                }
-            }
-            unchecked {
-                ++i;
-            }
-        }
-        assembly {
-            mstore(tokens, index)
-            mstore(maxAmounts, index)
-        }
-    }
-
-    /**
      * @notice Allows admins to authorize a new token pair
      * @param token The token address to authorize
      * @param supplyToken The supply token address associated with the token
@@ -509,7 +459,7 @@ contract Rent2Repay is
         uint256 maxLength = $.tokenList.length;
         for (uint256 i = 0; i < maxLength;) {
             $.allowedMaxAmounts[user][$.tokenList[i]] = 0;
-            $.periodicity[user][$.tokenList[i]] = 0;
+            $.periodicity[user] = 0;
             unchecked {
                 ++i;
             }
@@ -520,12 +470,11 @@ contract Rent2Repay is
     /**
      * @notice Internal function to check if a new week has started
      * @param _user The user address
-     * @param _token The token address
      * @return true if more than a week has passed since lastTimestamp
      */
-    function _isNewPeriod(address _user, address _token) internal view returns (bool) {
+    function _isNewPeriod(address _user) internal view returns (bool) {
         Rent2RepayStorage storage $ = _getR2rStorage();
-        return block.timestamp >= $.lastRepayTimestamps[_user] + $.periodicity[_user][_token];
+        return block.timestamp >= $.lastRepayTimestamps[_user] + $.periodicity[_user];
     }
 
     /**
@@ -596,33 +545,7 @@ contract Rent2Repay is
         $.senderTipsBps = newTipsBps;
     }
 
-    /**
-     * @notice Get current fee configuration
-     * @return daoFees Current DAO fees in BPS
-     * @return senderTips Current sender tips in BPS
-     */
-    function getFeeConfiguration() external view returns (uint256 daoFees, uint256 senderTips) {
-        Rent2RepayStorage storage $ = _getR2rStorage();
-        return ($.daoFeesBps, $.senderTipsBps);
-    }
-
-    /**
-     * @notice Get DAO fee reduction configuration
-     * @return token The DAO fee reduction token address
-     * @return minimumAmount The minimum amount required for fee reduction
-     * @return reductionPercentage The reduction percentage in BPS
-     * @return treasuryAddress The DAO treasury address
-     */
-    function getDaoFeeReductionConfiguration()
-        external
-        view
-        returns (address token, uint256 minimumAmount, uint256 reductionPercentage, address treasuryAddress)
-    {
-        Rent2RepayStorage storage $ = _getR2rStorage();
-        return ($.daoFeeReductionToken, $.daoFeeReductionMinimumAmount, $.daoFeeReductionBps, $.daoTreasuryAddress);
-    }
-
-    /**
+     /**
      * @notice Allows admin to update DAO fee reduction token
      * @param newToken The new DAO fee reduction token address
      */
@@ -687,6 +610,97 @@ contract Rent2Repay is
     }
 
     /**
+     * @notice Authorizes contract upgrades - only ADMIN_ROLE can upgrade
+     * @dev Required by UUPSUpgradeable. This ensures only admins can upgrade the contract
+     * @param newImplementation Address of the new implementation contract
+     */
+    function _authorizeUpgrade(address newImplementation) internal override onlyRole(ADMIN_ROLE) {}
+
+    /**
+     * @notice Returns the version of the contract
+     * @return Version string
+     */
+    function version() external pure virtual returns (string memory) {
+        return "1.0.0";
+    }
+
+    /**
+     * @notice Retrieves all authorized tokens and their configurations for a user
+     * @param user Address of the user
+     * @return tokens Array of authorized token addresses
+     * @return maxAmounts Array of weekly max amounts for each token
+     */
+    function getUserConfigs(address user)
+        external
+        view
+        returns (address[] memory tokens, uint256[] memory maxAmounts)
+    {
+        Rent2RepayStorage storage $ = _getR2rStorage();
+        /// @dev If user is not authorized, return empty arrays
+        if ($.lastRepayTimestamps[user] == 0) {
+            return (new address[](0), new uint256[](0));
+        }
+
+        uint256 maxLength = $.tokenList.length;
+        tokens = new address[](maxLength * 2);
+        maxAmounts = new uint256[](maxLength * 2);
+        uint256 index;
+        for (uint256 i = 0; i < maxLength;) {
+            address token = $.tokenList[i];
+            address supplyToken = $.tokenConfig[token].supplyToken;
+            if ($.tokenConfig[token].active && $.allowedMaxAmounts[user][token] > 0) {
+                tokens[index] = $.tokenList[i];
+                maxAmounts[index] = $.allowedMaxAmounts[user][$.tokenList[i]];
+                unchecked {
+                    ++index;
+                }
+            }
+            // list contains only 'simple' token, so we need to check the supply token
+            if ($.tokenConfig[supplyToken].active && $.allowedMaxAmounts[user][supplyToken] > 0) {
+                tokens[index] = supplyToken;
+                maxAmounts[index] = $.allowedMaxAmounts[user][supplyToken];
+                unchecked {
+                    ++index;
+                }
+            }
+            unchecked {
+                ++i;
+            }
+        }
+        assembly {
+            mstore(tokens, index)
+            mstore(maxAmounts, index)
+        }
+    }
+
+
+    /**
+     * @notice Get current fee configuration
+     * @return daoFees Current DAO fees in BPS
+     * @return senderTips Current sender tips in BPS
+     */
+    function getFeeConfiguration() external view returns (uint256 daoFees, uint256 senderTips) {
+        Rent2RepayStorage storage $ = _getR2rStorage();
+        return ($.daoFeesBps, $.senderTipsBps);
+    }
+
+    /**
+     * @notice Get DAO fee reduction configuration
+     * @return token The DAO fee reduction token address
+     * @return minimumAmount The minimum amount required for fee reduction
+     * @return reductionPercentage The reduction percentage in BPS
+     * @return treasuryAddress The DAO treasury address
+     */
+    function getDaoFeeReductionConfiguration()
+        external
+        view
+        returns (address token, uint256 minimumAmount, uint256 reductionPercentage, address treasuryAddress)
+    {
+        Rent2RepayStorage storage $ = _getR2rStorage();
+        return ($.daoFeeReductionToken, $.daoFeeReductionMinimumAmount, $.daoFeeReductionBps, $.daoTreasuryAddress);
+    }
+
+    /**
      * @notice Returns an array of active token addresses
      * @dev Gas-optimized function that filters out inactive tokens using assembly for resizing
      * @return activeTokens Array of currently active token addresses
@@ -724,38 +738,24 @@ contract Rent2Repay is
         }
     }
 
-    /**
-     * @notice Authorizes contract upgrades - only ADMIN_ROLE can upgrade
-     * @dev Required by UUPSUpgradeable. This ensures only admins can upgrade the contract
-     * @param newImplementation Address of the new implementation contract
-     */
-    function _authorizeUpgrade(address newImplementation) internal override onlyRole(ADMIN_ROLE) {}
 
-    /**
-     * @notice Returns the version of the contract
-     * @return Version string
-     */
-    function version() external pure virtual returns (string memory) {
-        return "3.0.0";
-    }
-
-    function allowedMaxAmounts(address user, address token) external view returns (uint256) {
+    function getAllowedMaxAmounts(address user, address token) external view returns (uint256) {
         return _getR2rStorage().allowedMaxAmounts[user][token];
     }
 
-    function lastRepayTimestamps(address user) external view returns (uint256) {
+    function getLastRepayTimestamps(address user) external view returns (uint256) {
         return _getR2rStorage().lastRepayTimestamps[user];
     }
 
-    function periodicity(address user, address token) external view returns (uint256) {
-        return _getR2rStorage().periodicity[user][token];
+    function getPeriodicity(address user) external view returns (uint256) {
+        return _getR2rStorage().periodicity[user];
     }
 
-    function tokenConfig(address token) external view returns (TokenConfig memory) {
+    function getTokenConfig(address token) external view returns (TokenConfig memory) {
         return _getR2rStorage().tokenConfig[token];
     }
 
-    function tokenList(uint256 index) external view returns (address) {
+    function getTokenList(uint256 index) external view returns (address) {
         return _getR2rStorage().tokenList[index];
     }
 }

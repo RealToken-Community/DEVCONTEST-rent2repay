@@ -121,11 +121,10 @@ contract Rent2RepayTest is Test {
 
     function testConfigureRent2Repay() public {
         assertFalse(rent2Repay.isAuthorized(user));
-        assertEq(rent2Repay.lastRepayTimestamps(user), 0);
-        assertEq(rent2Repay.allowedMaxAmounts(user, address(wxdai)), 0);
-        assertEq(rent2Repay.allowedMaxAmounts(user, address(usdc)), 0);
-        assertEq(rent2Repay.periodicity(user, address(wxdai)), 0);
-        assertEq(rent2Repay.periodicity(user, address(usdc)), 0);
+        assertEq(rent2Repay.getLastRepayTimestamps(user), 0);
+        assertEq(rent2Repay.getAllowedMaxAmounts(user, address(wxdai)), 0);
+        assertEq(rent2Repay.getAllowedMaxAmounts(user, address(usdc)), 0);
+        assertEq(rent2Repay.getPeriodicity(user), 0);
 
         address[] memory tokens = new address[](2);
         tokens[0] = address(wxdai);
@@ -142,16 +141,14 @@ contract Rent2RepayTest is Test {
         rent2Repay.configureRent2Repay(tokens, amounts, period, configTimestamp);
 
         assertTrue(rent2Repay.isAuthorized(user));
-        assertEq(rent2Repay.lastRepayTimestamps(user), configTimestamp);
-        assertEq(rent2Repay.allowedMaxAmounts(user, address(wxdai)), 10 ether);
-        assertEq(rent2Repay.allowedMaxAmounts(user, address(usdc)), 100 * 10 ** 6);
-        assertEq(rent2Repay.periodicity(user, address(wxdai)), period);
-        assertEq(rent2Repay.periodicity(user, address(usdc)), period);
-        assertGt(rent2Repay.lastRepayTimestamps(user), 0);
-        assertGt(rent2Repay.allowedMaxAmounts(user, address(wxdai)), 0);
-        assertGt(rent2Repay.allowedMaxAmounts(user, address(usdc)), 0);
-        assertGt(rent2Repay.periodicity(user, address(wxdai)), 0);
-        assertGt(rent2Repay.periodicity(user, address(usdc)), 0);
+        assertEq(rent2Repay.getLastRepayTimestamps(user), configTimestamp);
+        assertEq(rent2Repay.getAllowedMaxAmounts(user, address(wxdai)), 10 ether);
+        assertEq(rent2Repay.getAllowedMaxAmounts(user, address(usdc)), 100 * 10 ** 6);
+        assertEq(rent2Repay.getPeriodicity(user), period);
+        assertGt(rent2Repay.getLastRepayTimestamps(user), 0);
+        assertGt(rent2Repay.getAllowedMaxAmounts(user, address(wxdai)), 0);
+        assertGt(rent2Repay.getAllowedMaxAmounts(user, address(usdc)), 0);
+        assertGt(rent2Repay.getPeriodicity(user), 0);
     }
 
     function testBatchRent2Repay() public {
@@ -434,7 +431,7 @@ contract Rent2RepayTest is Test {
         assertGt(tokensAfterAdd.length, initialTokens.length, "Should have more tokens after adding");
 
         // Vérifier la configuration du token
-        Rent2Repay.TokenConfig memory config = rent2Repay.tokenConfig(newToken);
+        Rent2Repay.TokenConfig memory config = rent2Repay.getTokenConfig(newToken);
         assertEq(config.token, newToken, "Token address should match");
         assertEq(config.supplyToken, newSupplyToken, "Supply token address should match");
         assertTrue(config.active, "Token should be active");
@@ -449,7 +446,7 @@ contract Rent2RepayTest is Test {
         rent2Repay.unauthorizeToken(newToken);
 
         // Vérifier que le token n'est plus actif
-        Rent2Repay.TokenConfig memory configAfterRemove = rent2Repay.tokenConfig(newToken);
+        Rent2Repay.TokenConfig memory configAfterRemove = rent2Repay.getTokenConfig(newToken);
         assertFalse(configAfterRemove.active, "Token should not be active after removal");
 
         // Test que seul admin peut désautoriser des tokens
@@ -458,8 +455,8 @@ contract Rent2RepayTest is Test {
         rent2Repay.unauthorizeToken(address(wxdai));
 
         // Test des getters de tokens
-        assertEq(rent2Repay.tokenList(0), address(wxdai), "First token should be WXDAI");
-        assertEq(rent2Repay.tokenList(1), address(usdc), "Second token should be USDC");
+        assertEq(rent2Repay.getTokenList(0), address(wxdai), "First token should be WXDAI");
+        assertEq(rent2Repay.getTokenList(1), address(usdc), "Second token should be USDC");
     }
 
     function testGettersAndUtilities() public {
@@ -477,22 +474,22 @@ contract Rent2RepayTest is Test {
         assertGt(bytes(version).length, 0, "Version should not be empty");
 
         // Test des getters de configuration utilisateur (déjà configuré dans setUp)
-        uint256 allowedAmount = rent2Repay.allowedMaxAmounts(user, address(wxdai));
+        uint256 allowedAmount = rent2Repay.getAllowedMaxAmounts(user, address(wxdai));
         assertGt(allowedAmount, 0, "User should have allowed amount for WXDAI");
 
-        uint256 lastRepay = rent2Repay.lastRepayTimestamps(user);
+        uint256 lastRepay = rent2Repay.getLastRepayTimestamps(user);
         assertGt(lastRepay, 0, "User should have last repay timestamp");
 
-        uint256 period = rent2Repay.periodicity(user, address(wxdai));
-        assertGt(period, 0, "User should have periodicity for WXDAI");
+        uint256 period = rent2Repay.getPeriodicity(user);
+        assertGt(period, 0, "User should have getPeriodicity for WXDAI");
 
-        // Test tokenConfig pour un token existant
-        Rent2Repay.TokenConfig memory wxdaiConfig = rent2Repay.tokenConfig(address(wxdai));
+        // Test TokenConfig pour un token existant
+        Rent2Repay.TokenConfig memory wxdaiConfig = rent2Repay.getTokenConfig(address(wxdai));
         assertEq(wxdaiConfig.token, address(wxdai), "Token address should match");
         assertTrue(wxdaiConfig.active, "WXDAI should be active");
 
-        // Test tokenConfig pour un token inexistant
-        Rent2Repay.TokenConfig memory unknownConfig = rent2Repay.tokenConfig(address(0x123));
+        // Test TokenConfig pour un token inexistant
+        Rent2Repay.TokenConfig memory unknownConfig = rent2Repay.getTokenConfig(address(0x123));
         assertEq(unknownConfig.token, address(0), "Unknown token should have zero address");
         assertFalse(unknownConfig.active, "Unknown token should not be active");
     }
@@ -842,7 +839,7 @@ contract Rent2RepayTest is Test {
     }
 
     function testTokenPairManagement() public {
-        // Test complet de authorizeTokenPair et unauthorizeToken avec tokenConfig
+        // Test complet de authorizeTokenPair et unauthorizeToken avec getTokenConfig
 
         // Créer des tokens de test (USDT et sa paire)
         MockERC20 usdt = new MockERC20("Tether USD", "USDT", 6, 1000000 * 10 ** 6);
@@ -850,7 +847,7 @@ contract Rent2RepayTest is Test {
         MockERC20 usdtDebt = new MockERC20("USDT Debt", "vUSDT", 6, 1000000 * 10 ** 6);
 
         // ===== TEST INITIAL : USDT n'est pas présent =====
-        Rent2Repay.TokenConfig memory config = rent2Repay.tokenConfig(address(usdt));
+        Rent2Repay.TokenConfig memory config = rent2Repay.getTokenConfig(address(usdt));
         assertEq(config.token, address(0), "USDT should not be present initially");
         assertEq(config.supplyToken, address(0), "USDT supply should not be present initially");
         assertFalse(config.active, "USDT should not be authorized initially");
@@ -860,7 +857,7 @@ contract Rent2RepayTest is Test {
         rent2Repay.authorizeTokenPair(address(usdt), address(usdtSupply), address(usdtDebt));
 
         // Vérifier que la paire a été ajoutée
-        config = rent2Repay.tokenConfig(address(usdt));
+        config = rent2Repay.getTokenConfig(address(usdt));
         assertEq(config.token, address(usdt), "USDT token should be present");
         assertEq(config.supplyToken, address(usdtSupply), "USDT supply token should be correct");
         assertTrue(config.active, "USDT should be authorized");
@@ -881,7 +878,7 @@ contract Rent2RepayTest is Test {
         rent2Repay.unauthorizeToken(address(usdt));
 
         // Vérifier que la paire a été désactivée (mais pas supprimée)
-        config = rent2Repay.tokenConfig(address(usdt));
+        config = rent2Repay.getTokenConfig(address(usdt));
         assertEq(config.token, address(usdt), "USDT token should still be present but inactive");
         assertEq(config.supplyToken, address(usdtSupply), "USDT supply should still be present but inactive");
         assertFalse(config.active, "USDT should not be active after unauthorize");

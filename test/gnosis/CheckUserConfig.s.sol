@@ -35,7 +35,7 @@ contract checkUserConfigScript is Script {
         tokenNames[3] = "ARMMWXDAI";
 
         for (uint256 i = 0; i < specificTokens.length; i++) {
-            uint256 tmpAmounts = rent2Repay.allowedMaxAmounts(user1, specificTokens[i]);
+            uint256 tmpAmounts = rent2Repay.getAllowedMaxAmounts(user1, specificTokens[i]);
             console.log(tokenNames[i], ":", tmpAmounts);
         }
     }
