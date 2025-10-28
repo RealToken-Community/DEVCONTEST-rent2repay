@@ -30,4 +30,8 @@ via_ir = true
 fork_url = "https://rpc.gnosischain.com"
 fork_block_number = 35000000  # Block récent sur Gnosis
 
+# Verification (ajoute ta clé API Gnosisscan dans ton .env)
+[etherscan]
+gnosis = { key = "${GNOSISSCAN_API_KEY}" }
+
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options

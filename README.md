@@ -33,7 +33,7 @@ $ forge script script/DeployGnosis.s.sol --rpc-url https://rpc.gnosischain.com -
 ### Verify
 ```shell
 # implementation
-$ forge verify-contract --etherscan-api-key $GNOSISSCAN_API_KEY --chain-id 100 $R2R_IMPLEMENATION_ADDR src/Rent2Repay.sol:Rent2Repay
+$ forge verify-contract <IMPLEMENTATION_ADDRESS> src/Rent2Repay.sol:Rent2Repay --chain gnosis --etherscan-api-key $GNOSISSCAN_API_KEY --watch
 # proxy
 $ forge verify-contract --etherscan-api-key $GNOSISSCAN_API_KEY --chain-id 100 $R2R_PROXY_ADDR lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol:ERC1967Proxy --constructor-args $(cast abi-encode "constructor(address,bytes)" $R2R_IMPLEMENATION_ADDR 0x)
 ```

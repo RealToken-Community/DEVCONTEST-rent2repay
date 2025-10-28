@@ -91,8 +91,9 @@ contract DeployGnosisScript is Script {
         vm.stopBroadcast();
 
         console.log("\n=== DEPLOYMENT COMPLETED SUCCESSFULLY ===");
-        console.log("Contract address:", address(rent2Repay));
+        console.log("Contract address (proxy):", address(rent2Repay));
         console.log("Implementation address:", address(implementation));
         console.log("Proxy address:", address(proxy));
+
     }
 }
