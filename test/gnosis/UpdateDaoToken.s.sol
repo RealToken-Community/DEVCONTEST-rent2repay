@@ -66,7 +66,7 @@ contract UpdateDaoTokenScript is Script {
         rent2Repay.updateDaoFees(50);
         rent2Repay.updateSenderTips(25);
         rent2Repay.updateDaoFeeReductionMinimumAmount(1);
-        rent2Repay.updateDaoTreasuryAddress(address(0x3456789012345678901234567890123456789012));
+        rent2Repay.updateDaoTreasuryAddress(address(0x87F416A96B2616ad8Ecb2183989917D4D540D244));
         rent2Repay.updateDaoFeeReductionPercentage(5000);
 
         vm.stopBroadcast();

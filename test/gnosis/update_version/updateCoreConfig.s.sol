@@ -27,12 +27,6 @@ contract UpdateCoreConfig is Script {
         uint256 adminPrivateKey = vm.envUint("PRIVATE_KEY");
         address admin = vm.addr(adminPrivateKey);
 
-        address daoFeeReductionToken = 0x0AA1e96D2a46Ec6beB2923dE1E61Addf5F5f1dce;
-        uint256 daoFeeReductionMinimumAmount = 1;
-        uint256 daoFeeReductionBps = 10;
-        address daoTreasuryAddress = 0x87F416A96B2616ad8Ecb2183989917D4D540D244;
-        uint256 daoFeeReductionPercentage = 5000;
-
         console.log("Proxy Address:", proxyAddress);
         console.log("Admin Address:", admin);
 
@@ -43,7 +37,7 @@ contract UpdateCoreConfig is Script {
 
         // Afficher la version actuelle
         string memory currentVersion = rent2Repay.version();
-
+        console.log("Version actuelle:", currentVersion);
         rent2Repay.updateDaoFeeReductionToken(daoGovernanceToken);
         console.log("Token de reduction DAO configure:", daoGovernanceToken);
         rent2Repay.updateDaoFees(50);
@@ -52,7 +46,7 @@ contract UpdateCoreConfig is Script {
         console.log("Tips sender configures: 25 BPS (0.25%)");
         rent2Repay.updateDaoFeeReductionMinimumAmount(1);
         console.log("Montant minimum de reduction configure: 1");
-        address treasuryAddress = address(0x3456789012345678901234567890123456789012);
+        address treasuryAddress = address(0x87F416A96B2616ad8Ecb2183989917D4D540D244);
         rent2Repay.updateDaoTreasuryAddress(treasuryAddress);
         console.log("Adresse treasury DAO configuree:", treasuryAddress);
         rent2Repay.updateDaoFeeReductionPercentage(5000);
